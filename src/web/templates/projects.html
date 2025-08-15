@@ -159,7 +159,7 @@
                 <ul class="pagination justify-content-center">
                     {% if pagination.has_prev %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('projects', page=pagination.page-1, **request.args) }}">
+                        <a class="page-link" href="{{ url_for('projects', page=pagination.page-1, language=request.args.get('language', ''), min_stars=request.args.get('min_stars', ''), search=request.args.get('search', '')) }}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -172,14 +172,14 @@
                         </li>
                         {% elif p <= pagination.page + 2 and p >= pagination.page - 2 %}
                         <li class="page-item">
-                            <a class="page-link" href="{{ url_for('projects', page=p, **request.args) }}">{{ p }}</a>
+                            <a class="page-link" href="{{ url_for('projects', page=p, language=request.args.get('language', ''), min_stars=request.args.get('min_stars', ''), search=request.args.get('search', '')) }}">{{ p }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
                     
                     {% if pagination.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('projects', page=pagination.page+1, **request.args) }}">
+                        <a class="page-link" href="{{ url_for('projects', page=pagination.page+1, language=request.args.get('language', ''), min_stars=request.args.get('min_stars', ''), search=request.args.get('search', '')) }}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>

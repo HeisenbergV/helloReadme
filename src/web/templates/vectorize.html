@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}向量化 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-brain text-primary me-2"></i>
+                    数据向量化
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>说明：</strong>向量化功能将项目数据转换为向量并存储到ChromaDB中，用于语义搜索和智能推荐。
+                </div>
+                
+                <form method="POST" id="vectorize-form">
+                    <div class="mb-3">
+                        <label class="form-label">向量化操作</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="vectorize_type" id="vectorize_all" value="all" checked>
+                            <label class="form-check-label" for="vectorize_all">
+                                向量化所有项目数据
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="vectorize_type" id="vectorize_new" value="new">
+                            <label class="form-check-label" for="vectorize_new">
+                                仅向量化新项目（跳过已存在的）
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="vectorize-btn">
+                            <i class="fas fa-play me-2"></i>
+                            开始向量化
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="vectorize-progress" class="mt-4" style="display: none;">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">处理中...</span>
+                        </div>
+                        <p class="mt-2 text-muted">正在向量化数据，请稍候...</p>
+                    </div>
+                </div>
+                
+                <div id="vectorize-result" class="mt-4" style="display: none;">
+                    <!-- 结果将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>
+                    向量化统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="vectorize-stats">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2 text-muted">正在获取统计信息...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    使用提示
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        首次运行可能需要下载向量模型
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        向量化完成后可进行语义搜索
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        支持增量向量化，避免重复处理
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-check text-success me-2"></i>
+                        向量数据存储在vector_db目录
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <h3 class="mb-4">
+            <i class="fas fa-search text-info me-2"></i>
+            语义搜索测试
+        </h3>
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <input type="text" class="form-control" id="search-query" 
+                               placeholder="输入搜索关键词，例如：AI机器学习、Python数据分析等">
+                    </div>
+                    <div class="col-md-4">
+                        <button class="btn btn-outline-primary w-100" id="search-btn">
+                            <i class="fas fa-search me-2"></i>
+                            搜索相似项目
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="search-results" class="mt-4" style="display: none;">
+                    <!-- 搜索结果将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 加载向量化统计信息
+    loadVectorizeStats();
+    
+    // 绑定表单提交事件
+    $('#vectorize-form').on('submit', function(e) {
+        e.preventDefault();
+        startVectorization();
+    });
+    
+    // 绑定搜索按钮事件
+    $('#search-btn').on('click', function() {
+        performSearch();
+    });
+    
+    // 绑定回车键搜索
+    $('#search-query').on('keypress', function(e) {
+        if (e.which === 13) {
+            performSearch();
+        }
+    });
+});
+
+function loadVectorizeStats() {
+    $.get('/api/vectorize/stats')
+        .done(function(data) {
+            if (data.total_vectors !== undefined) {
+                const html = `
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">${data.total_vectors}</h4>
+                            <small class="text-muted">已向量化</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">${data.collection_name || 'github_projects'}</h4>
+                            <small class="text-muted">集合名称</small>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-database me-1"></i>
+                            存储路径: ${data.vector_db_path || 'vector_db'}
+                        </small>
+                    </div>
+                `;
+                $('#vectorize-stats').html(html);
+            }
+        })
+        .fail(function() {
+            $('#vectorize-stats').html(`
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>获取统计信息失败</p>
+                </div>
+            `);
+        });
+}
+
+function startVectorization() {
+    const vectorizeType = $('input[name="vectorize_type"]:checked').val();
+    
+    // 显示进度条
+    $('#vectorize-progress').show();
+    $('#vectorize-result').hide();
+    $('#vectorize-btn').prop('disabled', true);
+    
+    // 模拟进度更新
+    let progress = 0;
+    const progressInterval = setInterval(function() {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        $('.progress-bar').css('width', progress + '%');
+    }, 500);
+    
+    // 发送向量化请求
+    $.post('/api/vectorize', {
+        type: vectorizeType
+    })
+    .done(function(data) {
+        clearInterval(progressInterval);
+        $('.progress-bar').css('width', '100%');
+        
+        setTimeout(function() {
+            $('#vectorize-progress').hide();
+            showVectorizeResult(data);
+            $('#vectorize-btn').prop('disabled', false);
+            
+            // 重新加载统计信息
+            loadVectorizeStats();
+        }, 1000);
+    })
+    .fail(function(xhr) {
+        clearInterval(progressInterval);
+        $('#vectorize-progress').hide();
+        $('#vectorize-btn').prop('disabled', false);
+        
+        let errorMsg = '向量化失败';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+            errorMsg = xhr.responseJSON.error;
+        }
+        
+        showVectorizeResult({
+            success: false,
+            message: errorMsg
+        });
+    });
+}
+
+function showVectorizeResult(result) {
+    let html = '';
+    
+    if (result.success) {
+        html = `
+            <div class="alert alert-success">
+                <h5><i class="fas fa-check-circle me-2"></i>向量化成功！</h5>
+                <p class="mb-2">${result.message}</p>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h6 class="text-primary">${result.total_projects || 0}</h6>
+                        <small class="text-muted">总项目数</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="text-success">${result.success_count || 0}</h6>
+                        <small class="text-muted">成功数量</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="text-warning">${result.failed_count || 0}</h6>
+                        <small class="text-muted">失败数量</small>
+                    </div>
+                </div>
+                ${result.failed_projects && result.failed_projects.length > 0 ? 
+                    `<div class="mt-3">
+                        <strong>失败项目：</strong>
+                        <ul class="mb-0">
+                            ${result.failed_projects.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                    </div>` : ''
+                }
+            </div>
+        `;
+    } else {
+        html = `
+            <div class="alert alert-danger">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i>向量化失败</h5>
+                <p class="mb-0">${result.message}</p>
+            </div>
+        `;
+    }
+    
+    $('#vectorize-result').html(html).show();
+}
+
+function performSearch() {
+    const query = $('#search-query').val().trim();
+    
+    if (!query) {
+        alert('请输入搜索关键词');
+        return;
+    }
+    
+    $('#search-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>搜索中...');
+    
+    // 调用向量搜索API
+    $.ajax({
+        url: '/api/vectorize/search',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            query: query,
+            top_k: 10
+        }),
+        success: function(data) {
+            if (data.success) {
+                showSearchResults(query, data.results);
+            } else {
+                showSearchError(data.error || '搜索失败');
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = '搜索请求失败';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            }
+            showSearchError(errorMsg);
+        },
+        complete: function() {
+            $('#search-btn').prop('disabled', false).html('<i class="fas fa-search me-2"></i>搜索相似项目');
+        }
+    });
+}
+
+function showSearchResults(query, results) {
+    let html = '';
+    
+    if (results && results.length > 0) {
+        html = `
+            <h5>搜索关键词: "${query}"</h5>
+            <p class="text-muted">找到 ${results.length} 个相似项目</p>
+            <div class="row">
+        `;
+        
+        results.forEach(function(project) {
+            const similarityScore = project.similarity_score !== null ? 
+                (project.similarity_score * 100).toFixed(1) : 'N/A';
+            
+            html += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <a href="/project/${project.project_id}" class="text-decoration-none">${project.full_name}</a>
+                            </h6>
+                            <p class="card-text small">${project.description || '无描述'}</p>
+                                                    <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-primary">${project.language || 'Unknown'}</span>
+                            <small class="text-muted">
+                                <i class="fas fa-star text-warning"></i> ${project.stars || 0}
+                                <span class="ms-2 text-info">相似度: ${similarityScore}%</span>
+                            </small>
+                        </div>
+                        ${project.distance !== undefined ? 
+                            `<div class="mt-1">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    距离: ${project.distance.toFixed(4)}
+                                </small>
+                            </div>` : ''
+                        }
+                            ${project.topics && project.topics.length > 0 ? 
+                                `<div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-tags me-1"></i>
+                                        ${project.topics.slice(0, 3).join(', ')}
+                                        ${project.topics.length > 3 ? '...' : ''}
+                                    </small>
+                                </div>` : ''
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    } else {
+        html = `
+            <div class="text-center py-4">
+                <i class="fas fa-search fa-2x text-muted mb-3"></i>
+                <h5 class="text-muted">未找到相关项目</h5>
+                <p class="text-muted">尝试使用其他关键词搜索，或者先确保数据已经向量化</p>
+            </div>
+        `;
+    }
+    
+    $('#search-results').html(html).show();
+}
+
+function showSearchError(errorMsg) {
+    const html = `
+        <div class="alert alert-danger">
+            <h5><i class="fas fa-exclamation-triangle me-2"></i>搜索失败</h5>
+            <p class="mb-0">${errorMsg}</p>
+        </div>
+    `;
+    $('#search-results').html(html).show();
+}
+</script>
+{% endblock %}

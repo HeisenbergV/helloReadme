@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}AI问答 - 开源项目推荐{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        AI智能问答 - 开源项目推荐专家
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- 左侧：问答区域 -->
+                        <div class="col-md-8">
+                            <div class="mb-4">
+                                <h5>💡 询问AI专家</h5>
+                                <p class="text-muted">
+                                    描述您想要构建的系统，AI将为您推荐合适的开源项目！
+                                </p>
+                                
+                                <div class="mb-3">
+                                    <label for="questionInput" class="form-label">您的问题：</label>
+                                    <textarea 
+                                        class="form-control" 
+                                        id="questionInput" 
+                                        rows="3" 
+                                        placeholder="例如：我想做一个在线教育平台，有什么开源项目推荐吗？"
+                                    ></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="contextInput" class="form-label">上下文信息（可选）：</label>
+                                    <textarea 
+                                        class="form-control" 
+                                        id="contextInput" 
+                                        rows="2" 
+                                        placeholder="可以添加一些额外的需求描述，比如技术栈偏好、规模要求等..."
+                                    ></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="useRagCheck" checked>
+                                        <label class="form-check-label" for="useRagCheck">
+                                            <i class="fas fa-brain me-1"></i>
+                                            启用RAG检索（基于您的向量库智能推荐）
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">
+                                        💡 启用后，AI会先检索您的向量库，找到相关项目后再回答
+                                    </small>
+                                </div>
+                                
+                                <button 
+                                    class="btn btn-primary btn-lg" 
+                                    id="askBtn"
+                                    onclick="askAI()"
+                                >
+                                    <i class="fas fa-paper-plane me-2"></i>
+                                    询问AI
+                                </button>
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        💡 提示：描述越详细，AI推荐越精准！
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- AI回答区域 -->
+                            <div id="aiAnswer" class="d-none">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-brain me-2"></i>
+                                            AI专家回答
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- RAG检索信息 -->
+                                        <div id="ragInfo" class="mb-3 d-none">
+                                            <div class="alert alert-info">
+                                                <i class="fas fa-search me-2"></i>
+                                                <strong>RAG检索结果：</strong>
+                                                <div id="ragContext" class="mt-2"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div id="answerContent" class="mb-3"></div>
+                                        <div class="text-muted small">
+                                            <span id="answerModel"></span>
+                                            <span id="answerUsage" class="ms-3"></span>
+                                            <span id="ragStatus" class="ms-3"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 加载状态 -->
+                            <div id="loadingState" class="d-none">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">加载中...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">AI正在思考中，请稍候...</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 错误提示 -->
+                            <div id="errorState" class="d-none">
+                                <div class="alert alert-danger" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <span id="errorMessage"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：示例问题 -->
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>
+                                        示例问题
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6>🎯 系统开发</h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-info btn-sm w-100 text-start" 
+                                                        onclick="fillExample('在线教育平台')">
+                                                    在线教育平台
+                                                </button>
+                                            </li>
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-info btn-sm w-100 text-start" 
+                                                        onclick="fillExample('电商系统')">
+                                                    电商系统
+                                                </button>
+                                            </li>
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-info btn-sm w-100 text-start" 
+                                                        onclick="fillExample('内容管理系统')">
+                                                    内容管理系统
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <h6>🔧 技术栈</h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-success btn-sm w-100 text-start" 
+                                                        onclick="fillExample('React + Node.js 全栈应用')">
+                                                    React + Node.js 全栈应用
+                                                </button>
+                                            </li>
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-success btn-sm w-100 text-start" 
+                                                        onclick="fillExample('Python Django 后端系统')">
+                                                    Python Django 后端系统
+                                                </button>
+                                            </li>
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-success btn-sm w-100 text-start" 
+                                                        onclick="fillExample('微服务架构系统')">
+                                                    微服务架构系统
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <h6>📱 移动应用</h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-warning btn-sm w-100 text-start" 
+                                                        onclick="fillExample('跨平台移动应用')">
+                                                    跨平台移动应用
+                                                </button>
+                                            </li>
+                                            <li class="mb-2">
+                                                <button class="btn btn-outline-warning btn-sm w-100 text-start" 
+                                                        onclick="fillExample('原生iOS应用')">
+                                                    原生iOS应用
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>小贴士：</strong>
+                                        点击示例问题可以快速填充，然后根据您的具体需求进行修改。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 询问AI
+async function askAI() {
+    const question = document.getElementById('questionInput').value.trim();
+    const context = document.getElementById('contextInput').value.trim();
+    const useRag = document.getElementById('useRagCheck').checked;
+    
+    if (!question) {
+        showQAError('请输入您的问题');
+        return;
+    }
+    
+    // 显示加载状态
+    showQALoading();
+    
+    try {
+        const response = await fetch('/api/qa/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                question: question,
+                context: context,
+                use_rag: useRag
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAnswer(data);
+        } else {
+            showQAError(data.error || 'AI回答失败');
+        }
+        
+    } catch (error) {
+        console.error('请求失败:', error);
+        showQAError('网络请求失败，请检查网络连接');
+    }
+}
+
+// 显示AI回答
+function showAnswer(data) {
+    hideAllStates();
+    
+    // 显示RAG信息
+    if (data.rag_used && data.rag_context) {
+        document.getElementById('ragContext').innerHTML = formatAnswer(data.rag_context);
+        document.getElementById('ragInfo').classList.remove('d-none');
+        document.getElementById('ragStatus').textContent = `RAG: ✅ 已启用`;
+    } else {
+        document.getElementById('ragInfo').classList.add('d-none');
+        document.getElementById('ragStatus').textContent = `RAG: ❌ 未启用`;
+    }
+    
+    // 显示AI回答
+    document.getElementById('answerContent').innerHTML = formatAnswer(data.answer);
+    document.getElementById('answerModel').textContent = `模型: ${data.model}`;
+    
+    if (data.usage) {
+        const usage = data.usage;
+        let usageText = '';
+        if (usage.total_tokens) {
+            usageText = `Token使用: ${usage.total_tokens}`;
+        }
+        document.getElementById('answerUsage').textContent = usageText;
+    }
+    
+    document.getElementById('aiAnswer').classList.remove('d-none');
+    
+    // 滚动到回答区域
+    document.getElementById('aiAnswer').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+    });
+}
+
+// 格式化AI回答
+function formatAnswer(answer) {
+    // 将换行符转换为HTML
+    return answer.replace(/\n/g, '<br>');
+}
+
+// 显示加载状态
+function showQALoading() {
+    hideAllStates();
+    document.getElementById('loadingState').classList.remove('d-none');
+}
+
+// 显示错误
+function showQAError(message) {
+    hideAllStates();
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorState').classList.remove('d-none');
+}
+
+// 隐藏所有状态
+function hideAllStates() {
+    document.getElementById('aiAnswer').classList.add('d-none');
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('errorState').classList.add('d-none');
+}
+
+// 填充示例问题
+function fillExample(example) {
+    document.getElementById('questionInput').value = example;
+    document.getElementById('questionInput').focus();
+}
+
+// 回车键提交
+document.getElementById('questionInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        askAI();
+    }
+});
+
+// 页面加载完成后的初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 聚焦到问题输入框
+    document.getElementById('questionInput').focus();
+});
+</script>
+{% endblock %}

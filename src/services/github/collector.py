@@ -282,7 +282,7 @@ class GitHubCollector(DataSourceCollector):
                     logger.warning(f"max_repos类型错误，使用默认值: {settings.GITHUB_MAX_REPOS}")
             
             logger.info(f"开始搜索GitHub项目: {search_query}")
-            logger.info(f"最大采集数量: {max_repos} (类型: {type(max_repos)})")
+            logger.info(f"最大采集数量: {max_repos}")
             
             # 执行搜索
             repositories = self.github_client.search_repositories(
