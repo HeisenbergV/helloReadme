@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">
+                <i class="fas fa-github text-primary me-3"></i>
+                helloReadme
+            </h1>
+            <p class="lead">
+                基于RAG（检索增强生成）的GitHub项目智能推荐系统
+            </p>
+            <hr class="my-4">
+            <p>
+                自动采集AI相关项目信息，通过向量化存储和语义检索，为用户提供个性化的项目推荐。
+                支持多种采集方式，灵活的数据管理，以及直观的Web界面。
+            </p>
+            <div class="d-flex gap-2">
+                <a class="btn btn-primary btn-lg" href="{{ url_for('collect') }}">
+                    <i class="fas fa-download me-2"></i>开始采集
+                </a>
+                <a class="btn btn-outline-secondary btn-lg" href="{{ url_for('projects') }}">
+                    <i class="fas fa-list me-2"></i>浏览项目
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>系统状态
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="system-status">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2 text-muted">正在获取系统状态...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('collect') }}?type=search&query=AI machine learning" class="btn btn-outline-primary">
+                        <i class="fas fa-search me-2"></i>采集AI项目
+                    </a>
+                    <a href="{{ url_for('collect') }}?type=user&query=microsoft" class="btn btn-outline-success">
+                        <i class="fas fa-user me-2"></i>采集Microsoft项目
+                    </a>
+                    <a href="{{ url_for('collect') }}?type=org&query=openai" class="btn btn-outline-info">
+                        <i class="fas fa-building me-2"></i>采集OpenAI项目
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-star text-warning me-2"></i>系统特性
+        </h2>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-download fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">智能采集</h5>
+                <p class="card-text">
+                    支持多种采集方式：关键词搜索、用户项目、组织项目。
+                    智能识别新项目和更新，避免重复采集。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-database fa-3x text-success mb-3"></i>
+                <h5 class="card-title">灵活存储</h5>
+                <p class="card-text">
+                    抽象化数据库接口，支持多种数据库后端。
+                    当前使用SQLite，可轻松迁移到MySQL、PostgreSQL等。
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-brain fa-3x text-info mb-3"></i>
+                <h5 class="card-title">智能推荐</h5>
+                <p class="card-text">
+                    基于向量化存储和语义检索的智能推荐系统。
+                    结合LLM生成个性化推荐内容。
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-chart-bar text-success me-2"></i>最近采集的项目
+        </h2>
+        <div id="recent-projects">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2 text-muted">正在加载最近项目...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 加载系统状态
+    loadSystemStatus();
+    
+    // 加载最近项目
+    loadRecentProjects();
+});
+
+function loadSystemStatus() {
+    $.get('/api/stats')
+        .done(function(data) {
+            if (data.stats) {
+                const stats = data.stats;
+                const html = `
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">${stats.total_projects || 0}</h4>
+                            <small class="text-muted">总项目数</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-success">${stats.latest_collection ? '正常' : '无'}</h4>
+                            <small class="text-muted">采集状态</small>
+                        </div>
+                    </div>
+                `;
+                $('#system-status').html(html);
+            }
+        })
+        .fail(function() {
+            $('#system-status').html(`
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>获取状态失败</p>
+                </div>
+            `);
+        });
+}
+
+function loadRecentProjects() {
+    $.get('/api/projects?per_page=6')
+        .done(function(data) {
+            if (data.projects && data.projects.length > 0) {
+                let html = '<div class="row">';
+                data.projects.forEach(function(project) {
+                    html += `
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <a href="/project/${project.id}" class="text-decoration-none">
+                                            ${project.full_name}
+                                        </a>
+                                    </h6>
+                                    <p class="card-text small text-muted">
+                                        ${project.description || '无描述'}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-primary">${project.language || 'Unknown'}</span>
+                                        <small class="text-muted">
+                                            <i class="fas fa-star text-warning"></i> ${project.stars}
+                                            <i class="fas fa-code-branch text-info ms-2"></i> ${project.forks}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                $('#recent-projects').html(html);
+            } else {
+                $('#recent-projects').html(`
+                    <div class="text-center text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>暂无项目数据</p>
+                        <a href="{{ url_for('collect') }}" class="btn btn-primary">开始采集</a>
+                    </div>
+                `);
+            }
+        })
+        .fail(function() {
+            $('#recent-projects').html(`
+                <div class="text-center text-danger">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <p>加载项目失败</p>
+                </div>
+            `);
+        });
+}
+</script>
+{% endblock %}

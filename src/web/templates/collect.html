@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}数据采集 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-download me-2"></i>GitHub项目采集
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="collect-form">
+                    <div class="mb-3">
+                        <label for="collection_type" class="form-label">采集方式</label>
+                        <select class="form-select" id="collection_type" name="collection_type" required>
+                            <option value="search">关键词搜索</option>
+                            <option value="user">用户项目</option>
+                            <option value="org">组织项目</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="query-group">
+                        <label for="query" class="form-label">查询内容</label>
+                        <input type="text" class="form-control" id="query" name="query" 
+                               placeholder="输入搜索关键词、用户名或组织名" required>
+                        <div class="form-text">
+                            <span id="query-help">搜索关键词，如：AI machine learning</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3" id="language-group">
+                        <label for="language" class="form-label">编程语言</label>
+                        <select class="form-select" id="language" name="language">
+                            <option value="">所有语言</option>
+                            <option value="Python">Python</option>
+                            <option value="JavaScript">JavaScript</option>
+                            <option value="Java">Java</option>
+                            <option value="C++">C++</option>
+                            <option value="Go">Go</option>
+                            <option value="Rust">Rust</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="max_repos" class="form-label">最大采集数量</label>
+                        <input type="number" class="form-control" id="max_repos" name="max_repos" 
+                               value="100" min="1" max="1000">
+                        <div class="form-text">
+                            建议不超过1000个，避免API限制
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+                            <i class="fas fa-download me-2"></i>开始采集
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- 采集进度 -->
+        <div class="card mt-4" id="progress-card" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-spinner fa-spin me-2"></i>采集进度
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                <div id="progress-text">准备中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>采集说明
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>关键词搜索</h6>
+                <p class="small text-muted">
+                    根据关键词搜索GitHub上的相关项目，支持语言过滤和排序。
+                </p>
+                
+                <h6>用户项目</h6>
+                <p class="small text-muted">
+                    采集指定用户的所有公开项目，可选择是否包含分支项目。
+                </p>
+                
+                <h6>组织项目</h6>
+                <p class="small text-muted">
+                    采集指定组织的所有公开项目，可选择是否包含分支项目。
+                </p>
+                
+                <hr>
+                
+                <h6>注意事项</h6>
+                <ul class="small text-muted">
+                    <li>GitHub API有请求频率限制</li>
+                    <li>建议使用GitHub Token提高限制</li>
+                    <li>大量项目采集需要较长时间</li>
+                    <li>系统会自动去重和更新</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>API状态
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="api-status">
+                    <div class="text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <small class="text-muted">检查API状态...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 采集历史 -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>采集历史
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="collection-history">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2 text-muted">正在加载采集历史...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 检查API状态
+    checkAPIStatus();
+    
+    // 加载采集历史
+    loadCollectionHistory();
+    
+    // 采集方式变化处理
+    $('#collection_type').change(function() {
+        updateQueryHelp();
+    });
+    
+    // 表单提交处理
+    $('#collect-form').submit(function(e) {
+        e.preventDefault();
+        startCollection();
+    });
+    
+    // 初始化查询帮助
+    updateQueryHelp();
+});
+
+function updateQueryHelp() {
+    const type = $('#collection_type').val();
+    const queryGroup = $('#query-group');
+    const languageGroup = $('#language-group');
+    const queryHelp = $('#query-help');
+    
+    if (type === 'search') {
+        queryGroup.find('label').text('搜索关键词');
+        queryHelp.text('搜索关键词，如：AI machine learning');
+        languageGroup.show();
+    } else if (type === 'user') {
+        queryGroup.find('label').text('GitHub用户名');
+        queryHelp.text('输入GitHub用户名，如：microsoft');
+        languageGroup.hide();
+    } else if (type === 'org') {
+        queryGroup.find('label').text('组织名称');
+        queryHelp.text('输入GitHub组织名，如：openai');
+        languageGroup.hide();
+    }
+}
+
+function startCollection() {
+    const formData = {
+        type: $('#collection_type').val(),
+        query: $('#query').val(),
+        language: $('#language').val(),
+        max_repos: $('#max_repos').val()
+    };
+    
+    // 显示进度条
+    $('#progress-card').show();
+    $('#submit-btn').prop('disabled', true);
+    
+    // 发送采集请求
+    $.ajax({
+        url: '/api/collect',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            if (response.success) {
+                showSuccessMessage(response.message);
+                // 重新加载采集历史
+                loadCollectionHistory();
+            } else {
+                showErrorMessage(response.message);
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON ? xhr.responseJSON.error : '采集失败';
+            showErrorMessage(error);
+        },
+        complete: function() {
+            $('#progress-card').hide();
+            $('#submit-btn').prop('disabled', false);
+        }
+    });
+}
+
+function showSuccessMessage(message) {
+    // 创建成功消息
+    const alert = $(`
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    
+    // 插入到页面顶部
+    $('.container').first().prepend(alert);
+    
+    // 自动滚动到顶部
+    $('html, body').animate({ scrollTop: 0 }, 500);
+}
+
+function showErrorMessage(message) {
+    // 创建错误消息
+    const alert = $(`
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `);
+    
+    // 插入到页面顶部
+    $('.container').first().prepend(alert);
+    
+    // 自动滚动到顶部
+    $('html, body').animate({ scrollTop: 0 }, 500);
+}
+
+function checkAPIStatus() {
+    // 这里可以添加检查GitHub API状态的逻辑
+    // 暂时显示模拟状态
+    setTimeout(function() {
+        $('#api-status').html(`
+            <div class="text-center text-success">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <p class="mb-1">API正常</p>
+                <small class="text-muted">可以开始采集</small>
+            </div>
+        `);
+    }, 1000);
+}
+
+function loadCollectionHistory() {
+    // 这里可以添加加载采集历史的逻辑
+    // 暂时显示模拟数据
+    setTimeout(function() {
+        $('#collection-history').html(`
+            <div class="text-center text-muted">
+                <i class="fas fa-inbox fa-2x mb-2"></i>
+                <p>暂无采集历史</p>
+                <small>开始采集后，这里会显示采集记录</small>
+            </div>
+        `);
+    }, 1000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}项目列表 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>
+                <i class="fas fa-list me-2"></i>项目列表
+            </h2>
+            <a href="{{ url_for('collect') }}" class="btn btn-primary">
+                <i class="fas fa-download me-2"></i>采集新项目
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选器 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="language" class="form-label">编程语言</label>
+                        <select class="form-select" id="language" name="language">
+                            <option value="">所有语言</option>
+                            <option value="Python" {% if request.args.get('language') == 'Python' %}selected{% endif %}>Python</option>
+                            <option value="JavaScript" {% if request.args.get('language') == 'JavaScript' %}selected{% endif %}>JavaScript</option>
+                            <option value="Java" {% if request.args.get('language') == 'Java' %}selected{% endif %}>Java</option>
+                            <option value="C++" {% if request.args.get('language') == 'C++' %}selected{% endif %}>C++</option>
+                            <option value="Go" {% if request.args.get('language') == 'Go' %}selected{% endif %}>Go</option>
+                            <option value="Rust" {% if request.args.get('language') == 'Rust' %}selected{% endif %}>Rust</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="min_stars" class="form-label">最小星标数</label>
+                        <input type="number" class="form-control" id="min_stars" name="min_stars" 
+                               value="{{ request.args.get('min_stars', '') }}" min="0">
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="per_page" class="form-label">每页显示</label>
+                        <select class="form-select" id="per_page" name="per_page">
+                            <option value="20" {% if request.args.get('per_page', '20') == '20' %}selected{% endif %}>20</option>
+                            <option value="50" {% if request.args.get('per_page') == '50' %}selected{% endif %}>50</option>
+                            <option value="100" {% if request.args.get('per_page') == '100' %}selected{% endif %}>100</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>筛选
+                        </button>
+                        <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>重置
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 项目列表 -->
+<div class="row">
+    <div class="col-12">
+        {% if projects %}
+            <div class="row">
+                {% for project in projects %}
+                <div class="col-lg-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">
+                                    <a href="{{ url_for('project_detail', project_id=project.id) }}" 
+                                       class="text-decoration-none">
+                                        {{ project.full_name }}
+                                    </a>
+                                </h5>
+                                <span class="badge bg-primary">{{ project.language.value if project.language else 'Unknown' }}</span>
+                            </div>
+                            
+                            {% if project.description %}
+                            <p class="card-text text-muted">
+                                {{ project.description[:150] }}{% if project.description|length > 150 %}...{% endif %}
+                            </p>
+                            {% endif %}
+                            
+                            {% if project.readme_content %}
+                            <div class="mb-2">
+                                <div class="readme-preview">
+                                    <small class="text-muted">
+                                        <i class="fas fa-book me-1"></i>README预览:
+                                    </small>
+                                    <div class="readme-snippet">
+                                        {{ project.readme_content[:200] }}{% if project.readme_content|length > 200 %}...{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if project.topics %}
+                            <div class="mb-2">
+                                {% for topic in project.topics[:5] %}
+                                <span class="badge bg-light text-dark me-1">{{ topic }}</span>
+                                {% endfor %}
+                                {% if project.topics|length > 5 %}
+                                <span class="badge bg-light text-dark">+{{ project.topics|length - 5 }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex gap-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-star text-warning"></i> {{ project.stars|int }}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-code-branch text-info"></i> {{ project.forks|int }}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="fas fa-eye text-secondary"></i> {{ project.watchers|int }}
+                                    </small>
+                                </div>
+                                <small class="text-muted">
+                                    更新于 {{ project.updated_at.strftime('%Y-%m-%d') }}
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer bg-transparent">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>{{ project.owner_login }}
+                                </small>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="https://github.com/{{ project.full_name }}" 
+                                       class="btn btn-outline-primary btn-sm" target="_blank">
+                                        <i class="fab fa-github me-1"></i>GitHub
+                                    </a>
+                                    <a href="{{ url_for('project_detail', project_id=project.id) }}" 
+                                       class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-info-circle me-1"></i>详情
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- 分页 -->
+            {% if pagination and pagination.pages > 1 %}
+            <nav aria-label="项目分页">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('projects', page=pagination.page-1, **request.args) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in range(1, pagination.pages + 1) %}
+                        {% if p == pagination.page %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ p }}</span>
+                        </li>
+                        {% elif p <= pagination.page + 2 and p >= pagination.page - 2 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('projects', page=p, **request.args) }}">{{ p }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('projects', page=pagination.page+1, **request.args) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
+            <div class="text-center text-muted">
+                <small>
+                    显示第 {{ (pagination.page - 1) * pagination.per_page + 1 }} - 
+                    {{ pagination.page * pagination.per_page if pagination.page * pagination.per_page < pagination.total else pagination.total }} 
+                    条，共 {{ pagination.total }} 条记录
+                </small>
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">暂无项目数据</h4>
+                <p class="text-muted">开始采集GitHub项目来获取数据</p>
+                <a href="{{ url_for('collect') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-download me-2"></i>开始采集
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 自定义样式 -->
+<style>
+.readme-preview {
+    border-left: 3px solid #007bff;
+    padding-left: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+}
+
+.readme-snippet {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: #6c757d;
+    margin-top: 0.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 80px;
+    overflow: hidden;
+}
+
+.readme-snippet::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(transparent, #f8f9fa);
+    pointer-events: none;
+}
+
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

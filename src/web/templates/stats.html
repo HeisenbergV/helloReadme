@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}统计信息 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-chart-bar me-2"></i>采集统计信息
+        </h2>
+    </div>
+</div>
+
+<!-- 总体统计 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-database fa-3x text-primary mb-3"></i>
+                <h3 class="text-primary">{{ stats.total_projects or 0 }}</h3>
+                <p class="card-text">总项目数</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-check fa-3x text-success mb-3"></i>
+                <h3 class="text-success">
+                    {% if stats.latest_collection %}
+                        {{ stats.latest_collection.split('T')[0] }}
+                    {% else %}
+                        无
+                    {% endif %}
+                </h3>
+                <p class="card-text">最新采集时间</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-hdd fa-3x text-info mb-3"></i>
+                <h3 class="text-info">
+                    {% if stats.database_size %}
+                        {{ (stats.database_size / 1024) | round(1) }} KB
+                    {% else %}
+                        0 KB
+                    {% endif %}
+                </h3>
+                <p class="card-text">数据库大小</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                <h3 class="text-warning">{{ stats.languages|length or 0 }}</h3>
+                <p class="card-text">支持语言数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 语言分布 -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-code me-2"></i>编程语言分布
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if language_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>编程语言</th>
+                                    <th>项目数量</th>
+                                    <th>占比</th>
+                                    <th>进度条</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set total = language_stats.values() | sum %}
+                                {% for language, count in language_stats.items() %}
+                                {% set percentage = (count / total * 100) | round(1) %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ language or 'Unknown' }}</span>
+                                    </td>
+                                    <td>{{ count }}</td>
+                                    <td>{{ percentage }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar" role="progressbar" 
+                                                 style="width: {{ percentage }}%"
+                                                 aria-valuenow="{{ percentage }}" 
+                                                 aria-valuemin="0" aria-valuemax="100">
+                                                {{ percentage }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>暂无语言统计数据</p>
+                        <p>开始采集项目后，这里会显示语言分布信息</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>系统信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>系统状态:</strong>
+                    <span class="badge bg-success ms-2">运行中</span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>数据库:</strong>
+                    <span class="badge bg-primary ms-2">SQLite</span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>采集器:</strong>
+                    <span class="badge bg-info ms-2">GitHub API</span>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>向量化:</strong>
+                    <span class="badge bg-warning ms-2">sentence-transformers</span>
+                </div>
+                
+                <hr>
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('collect') }}" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>开始采集
+                    </a>
+                    <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list me-2"></i>查看项目
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools me-2"></i>快速操作
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('collect') }}?type=search&query=AI machine learning" 
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-search me-2"></i>采集AI项目
+                    </a>
+                    <a href="{{ url_for('collect') }}?type=user&query=microsoft" 
+                       class="btn btn-outline-success btn-sm">
+                        <i class="fas fa-user me-2"></i>采集Microsoft项目
+                    </a>
+                    <a href="{{ url_for('collect') }}?type=org&query=openai" 
+                       class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-building me-2"></i>采集OpenAI项目
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 采集建议 -->
+{% if not stats.total_projects or stats.total_projects == 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-lightbulb me-2"></i>采集建议</h5>
+            <ul class="mb-0">
+                <li>首次使用建议从小数量开始采集（如50个项目）</li>
+                <li>可以尝试采集一些知名组织，如Microsoft、OpenAI、Google等</li>
+                <li>使用GitHub Token可以提高API请求限制</li>
+                <li>建议定期采集以保持数据更新</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

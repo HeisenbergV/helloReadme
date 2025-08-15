@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}页面未找到 - helloReadme{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="mb-4">
+        <i class="fas fa-exclamation-triangle fa-5x text-warning"></i>
+    </div>
+    
+    <h1 class="display-4 text-muted">404</h1>
+    <h2 class="mb-4">页面未找到</h2>
+    
+    <p class="lead text-muted mb-4">
+        抱歉，您访问的页面不存在或已被移动。
+    </p>
+    
+    <div class="d-flex justify-content-center gap-3">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fas fa-home me-2"></i>返回首页
+        </a>
+        <a href="{{ url_for('projects') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-list me-2"></i>浏览项目
+        </a>
+    </div>
+</div>
+{% endblock %}

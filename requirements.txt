@@ -1,0 +1,26 @@
+# 核心依赖
+PyGithub>=2.1.0
+requests>=2.31.0
+python-dotenv>=1.0.0
+
+# 数据库相关
+SQLAlchemy>=2.0.0
+alembic>=1.13.0
+
+# 向量化相关
+sentence-transformers>=2.2.0
+chromadb>=0.4.0
+
+# Web框架 - 使用Flask
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Migrate>=4.0.0
+
+# 工具库
+pydantic>=2.0.0
+loguru>=0.7.0
+click>=8.1.0
+
+# 测试相关
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
