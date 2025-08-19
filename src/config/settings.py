@@ -3,7 +3,7 @@
 """
 import os
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=True, env="DEBUG")
     
     # GitHub API配置
-    GITHUB_TOKEN: Optional[str] = ""
+    GITHUB_TOKEN: Optional[str] = Field(default=None, env="GITHUB_TOKEN")
     GITHUB_API_BASE_URL: str = "https://api.github.com"
     GITHUB_SEARCH_QUERY: str = "AI machine learning artificial intelligence"
     GITHUB_MAX_REPOS: int = 1000
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     
     # AI服务配置
     # DeepSeek配置
-    DEEPSEEK_API_KEY: str = ""  # 请在此处填入您的DeepSeek API密钥
+    DEEPSEEK_API_KEY: str = "sk-9f058b9120d84939a0e08e9f6a3b811b"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
     
     # OpenAI配置
@@ -68,7 +68,6 @@ class Settings(BaseSettings):
     DEFAULT_LLM_MAX_TOKENS: int = 1000
     
     # AI服务优先级 (本地服务优先)
-    AI_SERVICE_PRIORITY: List[str] = ["ollama", "deepseek", "openai", "anthropic", "baidu", "alibaba", "zhipu"]
     
     # 日志配置
     LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")

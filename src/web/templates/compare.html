@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}项目对比分析 - 开源项目推荐{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        项目对比分析 - 智能对比推荐
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- 左侧：项目选择区域 -->
+                        <div class="col-md-4">
+                            <div class="mb-4">
+                                <h5>📋 选择对比项目</h5>
+                                <p class="text-muted">
+                                    选择2-5个项目进行智能对比分析
+                                </p>
+                                
+                                <!-- 项目搜索 -->
+                                <div class="mb-3">
+                                    <label for="projectSearch" class="form-label">搜索项目：</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="projectSearch" placeholder="输入项目名称或描述关键词...">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="searchProjects()">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- 项目列表 -->
+                                <div class="mb-3">
+                                    <label class="form-label">搜索结果：</label>
+                                    <div id="searchResults" class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+                                        <div class="text-muted text-center py-3">
+                                            <i class="fas fa-search me-2"></i>
+                                            搜索项目以开始对比
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 已选项目 -->
+                                <div class="mb-3">
+                                    <label class="form-label">已选项目 (<span id="selectedCount">0</span>/5)：</label>
+                                    <div id="selectedProjects" class="border rounded p-2" style="min-height: 100px;">
+                                        <div class="text-muted text-center py-3">
+                                            <i class="fas fa-plus me-2"></i>
+                                            从搜索结果中选择项目
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 对比类型选择 -->
+                                <div class="mb-3">
+                                    <label for="comparisonType" class="form-label">对比类型：</label>
+                                    <select class="form-select" id="comparisonType">
+                                        <option value="detailed">全面对比分析</option>
+                                        <option value="technical">技术层面对比</option>
+                                        <option value="community">社区活跃度对比</option>
+                                    </select>
+                                    <small class="text-muted">
+                                        💡 全面对比包含技术、功能、社区等全方位分析
+                                    </small>
+                                </div>
+                                
+                                <button 
+                                    class="btn btn-info btn-lg w-100" 
+                                    id="compareBtn"
+                                    onclick="startComparison()"
+                                    disabled
+                                >
+                                    <i class="fas fa-balance-scale me-2"></i>
+                                    开始对比分析
+                                </button>
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        💡 提示：选择更多项目可以获得更全面的对比分析
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：对比结果区域 -->
+                        <div class="col-md-8">
+                            <div class="mb-4">
+                                <h5>📊 对比分析结果</h5>
+                                
+                                <!-- 加载状态 -->
+                                <div id="loadingState" class="d-none">
+                                    <div class="text-center py-5">
+                                        <div class="spinner-border text-info" role="status">
+                                            <span class="visually-hidden">分析中...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">AI正在分析项目，请稍候...</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- 错误状态 -->
+                                <div id="errorState" class="d-none">
+                                    <div class="alert alert-danger">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>分析失败：</strong>
+                                        <span id="errorMessage"></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 对比结果 -->
+                                <div id="comparisonResult" class="d-none">
+                                    <div class="card border-info">
+                                        <div class="card-header bg-info text-white">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-chart-bar me-2"></i>
+                                                AI对比分析结果
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="comparisonContent" class="mb-3"></div>
+                                            <div class="text-muted small">
+                                                <span id="comparisonModel"></span>
+                                                <span id="comparisonUsage" class="ms-3"></span>
+                                                <span id="comparisonProjects" class="ms-3"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 快速对比示例 -->
+                                <div id="quickExamples" class="mt-4">
+                                    <h6>🚀 快速对比示例</h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">AI框架对比</h6>
+                                                    <p class="card-text text-muted">对比TensorFlow、PyTorch等主流AI框架</p>
+                                                    <button class="btn btn-sm btn-outline-info" onclick="fillQuickExample('AI框架')">
+                                                        使用此示例
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">Web框架对比</h6>
+                                                    <p class="card-text text-muted">对比Django、Flask、FastAPI等Web框架</p>
+                                                    <button class="btn btn-sm btn-outline-info" onclick="fillQuickExample('Web框架')">
+                                                        使用此示例
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedProjects = [];
+
+// 搜索项目
+async function searchProjects() {
+    const searchTerm = document.getElementById('projectSearch').value.trim();
+    if (!searchTerm) {
+        showSearchError('请输入搜索关键词');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/search', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: searchTerm,
+                limit: 20
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            displaySearchResults(data.results);
+        } else {
+            showSearchError(data.error || '搜索失败');
+        }
+        
+    } catch (error) {
+        console.error('搜索请求失败:', error);
+        showSearchError('网络请求失败，请检查网络连接');
+    }
+}
+
+// 显示搜索结果
+function displaySearchResults(projects) {
+    const container = document.getElementById('searchResults');
+    
+    if (!projects || projects.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center py-3">未找到相关项目</div>';
+        return;
+    }
+    
+    let html = '';
+    projects.forEach(project => {
+        const isSelected = selectedProjects.some(p => p.id === project.id);
+        html += `
+            <div class="border-bottom py-2 ${isSelected ? 'bg-light' : ''}">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${project.name}</h6>
+                        <p class="mb-1 small text-muted">${project.description || '无描述'}</p>
+                        <div class="small">
+                            <span class="badge bg-primary me-1">${project.language || '未知'}</span>
+                            <span class="badge bg-success me-1">⭐ ${project.stars || 0}</span>
+                            <span class="badge bg-info">🔀 ${project.forks || 0}</span>
+                        </div>
+                    </div>
+                    <button 
+                        class="btn btn-sm ${isSelected ? 'btn-secondary' : 'btn-outline-primary'}"
+                        onclick="toggleProjectSelection(${project.id}, '${project.name}', '${project.description || ''}', '${project.language || ''}', ${project.stars || 0}, ${project.forks || 0})"
+                        ${isSelected ? 'disabled' : ''}
+                    >
+                        ${isSelected ? '已选择' : '选择'}
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 切换项目选择
+function toggleProjectSelection(projectId, name, description, language, stars, forks) {
+    const project = {
+        id: projectId,
+        name: name,
+        description: description,
+        language: language,
+        stars: stars,
+        forks: forks
+    };
+    
+    const index = selectedProjects.findIndex(p => p.id === projectId);
+    if (index === -1) {
+        if (selectedProjects.length >= 5) {
+            alert('最多只能选择5个项目进行对比');
+            return;
+        }
+        selectedProjects.push(project);
+    } else {
+        selectedProjects.splice(index, 1);
+    }
+    
+    updateSelectedProjectsDisplay();
+    updateCompareButton();
+}
+
+// 更新已选项目显示
+function updateSelectedProjectsDisplay() {
+    const container = document.getElementById('selectedProjects');
+    const countSpan = document.getElementById('selectedCount');
+    
+    countSpan.textContent = selectedProjects.length;
+    
+    if (selectedProjects.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center py-3"><i class="fas fa-plus me-2"></i>从搜索结果中选择项目</div>';
+        return;
+    }
+    
+    let html = '';
+    selectedProjects.forEach((project, index) => {
+        html += `
+            <div class="border-bottom py-2">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${index + 1}. ${project.name}</h6>
+                        <p class="mb-1 small text-muted">${project.description || '无描述'}</p>
+                        <div class="small">
+                            <span class="badge bg-primary me-1">${project.language || '未知'}</span>
+                            <span class="badge bg-success me-1">⭐ ${project.stars || 0}</span>
+                            <span class="badge bg-info">🔀 ${project.forks || 0}</span>
+                        </div>
+                    </div>
+                    <button 
+                        class="btn btn-sm btn-outline-danger"
+                        onclick="removeProject(${index})"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// 移除项目
+function removeProject(index) {
+    selectedProjects.splice(index, 1);
+    updateSelectedProjectsDisplay();
+    updateCompareButton();
+}
+
+// 更新对比按钮状态
+function updateCompareButton() {
+    const compareBtn = document.getElementById('compareBtn');
+    compareBtn.disabled = selectedProjects.length < 2;
+}
+
+// 开始对比分析
+async function startComparison() {
+    if (selectedProjects.length < 2) {
+        alert('至少需要选择2个项目进行对比');
+        return;
+    }
+    
+    const comparisonType = document.getElementById('comparisonType').value;
+    
+    // 显示加载状态
+    showComparisonLoading();
+    
+    try {
+        const response = await fetch('/api/compare/projects', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project_ids: selectedProjects.map(p => p.id),
+                comparison_type: comparisonType
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showComparisonResult(data);
+        } else {
+            showComparisonError(data.error || '对比分析失败');
+        }
+        
+    } catch (error) {
+        console.error('对比分析请求失败:', error);
+        showComparisonError('网络请求失败，请检查网络连接');
+    }
+}
+
+// 显示对比结果
+function showComparisonResult(data) {
+    hideAllComparisonStates();
+    
+    // 显示对比结果
+    document.getElementById('comparisonContent').innerHTML = formatAnswer(data.comparison);
+    document.getElementById('comparisonModel').textContent = `模型: ${data.model}`;
+    document.getElementById('comparisonProjects').textContent = `对比项目数: ${data.projects_count}`;
+    
+    if (data.usage) {
+        const usage = data.usage;
+        let usageText = '';
+        if (usage.total_tokens) {
+            usageText = `Token使用: ${usage.total_tokens}`;
+        }
+        document.getElementById('comparisonUsage').textContent = usageText;
+    }
+    
+    document.getElementById('comparisonResult').classList.remove('d-none');
+    
+    // 滚动到结果区域
+    document.getElementById('comparisonResult').scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+    });
+}
+
+// 格式化AI回答
+function formatAnswer(answer) {
+    // 将换行符转换为HTML
+    return answer.replace(/\n/g, '<br>');
+}
+
+// 显示对比加载状态
+function showComparisonLoading() {
+    hideAllComparisonStates();
+    document.getElementById('loadingState').classList.remove('d-none');
+}
+
+// 显示对比错误
+function showComparisonError(message) {
+    hideAllComparisonStates();
+    document.getElementById('errorMessage').textContent = message;
+    document.getElementById('errorState').classList.remove('d-none');
+}
+
+// 隐藏所有对比状态
+function hideAllComparisonStates() {
+    document.getElementById('comparisonResult').classList.add('d-none');
+    document.getElementById('loadingState').classList.add('d-none');
+    document.getElementById('errorState').classList.add('d-none');
+}
+
+// 显示搜索错误
+function showSearchError(message) {
+    const container = document.getElementById('searchResults');
+    container.innerHTML = `<div class="alert alert-danger">${message}</div>`;
+}
+
+// 快速示例填充
+function fillQuickExample(type) {
+    let searchTerm = '';
+    if (type === 'AI框架') {
+        searchTerm = 'machine learning framework tensorflow pytorch';
+    } else if (type === 'Web框架') {
+        searchTerm = 'web framework django flask fastapi';
+    }
+    
+    document.getElementById('projectSearch').value = searchTerm;
+    searchProjects();
+}
+
+// 回车键搜索
+document.getElementById('projectSearch').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        searchProjects();
+    }
+});
+
+// 页面加载完成后的初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 聚焦到搜索输入框
+    document.getElementById('projectSearch').focus();
+});
+</script>
+{% endblock %}
+

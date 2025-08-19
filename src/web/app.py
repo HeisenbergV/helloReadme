@@ -497,6 +497,176 @@ def qa():
     """AI问答页面"""
     return render_template('qa.html')
 
+@app.route('/compare')
+def compare():
+    """项目对比分析页面"""
+    return render_template('compare.html')
+
+@app.route('/api/compare/projects', methods=['POST'])
+def api_compare_projects():
+    """API接口：项目对比分析"""
+    try:
+        data = request.get_json()
+        project_ids = data.get('project_ids', [])
+        comparison_type = data.get('comparison_type', 'detailed')  # detailed, technical, community
+        
+        if not project_ids or len(project_ids) < 2:
+            return jsonify({'error': '至少需要选择2个项目进行对比'}), 400
+        
+        # 创建数据库连接
+        database = SQLiteDatabase()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            if not loop.run_until_complete(database.connect()):
+                return jsonify({'error': '数据库连接失败'}), 500
+            
+            # 获取项目详细信息
+            projects_data = []
+            for project_id in project_ids:
+                project = loop.run_until_complete(database.get_project_by_id(project_id))
+                if project:
+                    projects_data.append(project)
+            
+            if len(projects_data) < 2:
+                return jsonify({'error': '部分项目数据获取失败'}), 500
+            
+            # 创建AI服务管理器进行对比分析
+            ai_manager = AIServiceManager()
+            if not loop.run_until_complete(ai_manager.initialize()):
+                return jsonify({'error': 'AI服务初始化失败'}), 500
+            
+            # 构建对比分析提示词
+            comparison_prompt = build_comparison_prompt(projects_data, comparison_type)
+            
+            # 调用AI服务进行对比分析
+            response = loop.run_until_complete(
+                ai_manager.chat(
+                    messages=[
+                        {"role": "system", "content": "你是一个专业的开源项目对比分析专家。请根据提供的项目信息进行详细对比分析。"},
+                        {"role": "user", "content": comparison_prompt}
+                    ],
+                    temperature=0.7,
+                    max_tokens=3000
+                )
+            )
+            
+            # 关闭服务
+            loop.run_until_complete(ai_manager.close())
+            loop.run_until_complete(database.disconnect())
+            
+            if response.error:
+                return jsonify({'error': f'AI对比分析失败: {response.error}'}), 500
+            
+            return jsonify({
+                'success': True,
+                'comparison': response.content,
+                'model': response.model,
+                'usage': response.usage,
+                'projects_count': len(projects_data)
+            })
+            
+        finally:
+            loop.close()
+            
+    except Exception as e:
+        logger.error(f"项目对比分析失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/search', methods=['POST'])
+def api_search_projects():
+    """API接口：项目搜索"""
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        limit = data.get('limit', 20)
+        offset = data.get('offset', 0)
+        
+        if not query:
+            return jsonify({'error': '搜索关键词不能为空'}), 400
+        
+        # 创建数据库连接
+        database = SQLiteDatabase()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            if not loop.run_until_complete(database.connect()):
+                return jsonify({'error': '数据库连接失败'}), 500
+            
+            # 执行搜索
+            search_results = loop.run_until_complete(
+                database.search_projects(query, limit=limit, offset=offset)
+            )
+            
+            # 关闭数据库连接
+            loop.run_until_complete(database.disconnect())
+            
+            return jsonify({
+                'success': True,
+                'results': search_results,
+                'total': len(search_results),
+                'query': query
+            })
+            
+        finally:
+            loop.close()
+            
+    except Exception as e:
+        logger.error(f"项目搜索失败: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def build_comparison_prompt(projects_data, comparison_type):
+    """构建对比分析提示词"""
+    projects_info = []
+    for i, project in enumerate(projects_data, 1):
+        project_info = f"""
+项目{i}: {project.full_name}
+- 描述: {project.description or '无描述'}
+- 语言: {project.language or '未知'}
+- 星数: {project.stars or 0}
+- 复刻数: {project.forks or 0}
+- 主题: {', '.join(project.topics) if project.topics else '无'}
+- 创建时间: {project.created_at}
+- 最后更新: {project.updated_at}
+- 默认分支: {project.default_branch}
+"""
+        projects_info.append(project_info)
+    
+    comparison_instructions = ""
+    if comparison_type == "detailed":
+        comparison_instructions = """
+请对以上项目进行全面的对比分析，包括：
+1. 技术栈对比（编程语言、框架、依赖等）
+2. 功能特性对比（核心功能、扩展性、易用性等）
+3. 社区活跃度对比（星数、复刻数、更新频率等）
+4. 学习曲线对比（文档质量、示例代码、社区支持等）
+5. 适用场景对比（企业级、个人项目、学习用途等）
+6. 优缺点分析（每个项目的优势和不足）
+7. 最终推荐（根据不同类型需求给出推荐排序）
+
+请用中文回答，分析要详细、客观、实用。
+"""
+    elif comparison_type == "technical":
+        comparison_instructions = """
+请对以上项目进行技术层面的对比分析，重点关注：
+1. 技术架构对比
+2. 性能特点对比
+3. 扩展性对比
+4. 技术选型建议
+"""
+    elif comparison_type == "community":
+        comparison_instructions = """
+请对以上项目进行社区活跃度对比分析，重点关注：
+1. 星数和复刻数对比
+2. 更新频率对比
+3. 社区支持对比
+4. 长期维护性评估
+"""
+    
+    return f"请对比分析以下{len(projects_data)}个开源项目：\n\n" + "\n".join(projects_info) + comparison_instructions
+
 @app.route('/api/qa/ask', methods=['POST'])
 def api_qa_ask():
     """API接口：AI问答 - 集成RAG检索"""
@@ -526,25 +696,26 @@ def api_qa_ask():
                 try:
                     # 初始化向量化服务
                     if loop.run_until_complete(vectorizer.initialize()):
-                        # 执行向量搜索，获取相关项目
+                        # 执行向量搜索，获取相关项目（增加数量以支持对比）
                         similar_projects = loop.run_until_complete(
-                            vectorizer.search_similar_projects(question, top_k=5)
+                            vectorizer.search_similar_projects(question, top_k=8)
                         )
                         
                         if similar_projects:
                             # 构建RAG上下文
-                            rag_context = "基于您的向量库，我找到了以下相关项目信息：\n\n"
+                            rag_context = "基于您的向量库，我找到了以下相关项目信息，我将为您进行详细对比分析：\n\n"
                             for i, project in enumerate(similar_projects, 1):
                                 rag_context += f"{i}. **{project.get('name', 'Unknown')}**\n"
                                 rag_context += f"   - 描述: {project.get('description', 'No description')}\n"
                                 rag_context += f"   - 语言: {project.get('language', 'Unknown')}\n"
                                 rag_context += f"   - 星数: {project.get('stars', 'Unknown')}\n"
-                                rag_context += f"   - 相似度: {project.get('similarity', 'Unknown')}\n"
+                                rag_context += f"   - 复刻数: {project.get('forks', 'Unknown')}\n"
+                                rag_context += f"   - 相似度: {project.get('similarity_score', 'Unknown'):.3f}\n"
                                 if project.get('topics'):
                                     rag_context += f"   - 标签: {', '.join(project.get('topics', []))}\n"
                                 rag_context += "\n"
                             
-                            logger.info(f"RAG检索到 {len(similar_projects)} 个相关项目")
+                            logger.info(f"RAG检索到 {len(similar_projects)} 个相关项目用于对比分析")
                         else:
                             rag_context = "在您的向量库中没有找到直接相关的项目，我将基于通用知识为您推荐。\n\n"
                             logger.info("RAG检索未找到相关项目，使用通用知识")
@@ -566,8 +737,16 @@ def api_qa_ask():
 5. 提供项目的基本信息（如技术栈、活跃度、许可证等）
 6. 给出具体的使用建议和实施步骤
 7. 如果提供了向量库中的项目信息，优先推荐这些项目
+8. 当有多个相关项目时，进行详细的对比分析，包括：
+   - 技术栈对比
+   - 功能特性对比
+   - 社区活跃度对比
+   - 学习曲线对比
+   - 适用场景对比
+   - 优缺点分析
+9. 根据用户需求给出最终推荐排序
 
-请用中文回答，回答要详细、专业、实用。如果提供了相关项目信息，请重点分析这些项目。"""
+请用中文回答，回答要详细、专业、实用。如果提供了相关项目信息，请重点分析这些项目并进行对比。"""
             
             # 合并上下文信息
             full_context = ""
